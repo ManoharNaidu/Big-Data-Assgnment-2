@@ -34,6 +34,9 @@ def sequential_scan(data):
     total_time = end_time - start_time
 
     print(f"- Sequential Scan Total Time: {total_time} seconds")
+
+    sorted_results = sorted(skyline_result, key=lambda p: p['id'])
+    skyline_result = sorted_results
     
     output_path = './Task2_Results/Seq_Scan.txt'
     with open(output_path, 'w') as file:
@@ -263,6 +266,9 @@ def BBS():
     total_time = end_time - start_time
     
     print(f"- BBS Total Time: {total_time} seconds")
+
+    sorted_results = sorted(SKY, key=lambda p: p['id'])
+    SKY = sorted_results
     
     output_path = './Task2_Results/BBS.txt'
     with open(output_path, 'w') as file:
