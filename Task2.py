@@ -1,5 +1,11 @@
 
-# 7 + 1 + 3 = 11%3 = 2 => city3 dataset
+'''Choosing the dataset
+Puja [48664111]
+Manohar [48975257]
+Xavier [48655163]
+[1 + 7 + 3] = 11 % 3 = 2
+Thus, it is city3 dataset'''
+
 import sys
 import time
 import math
@@ -11,8 +17,19 @@ with open('./Task2_Datasets/city3.txt', 'r') as file:
         id, x, y = line.strip().split(' ')
         data_points.append({'id': id, 'x': float(x), 'y': float(y)})
 
-def dominates(p1, p2):
-    # Check if p1 dominates p2 (p1 is better in all dimensions)
+def write_results(method_name, results, total_time):
+
+    print(f"- {method_name} Total Time: {total_time} seconds")
+
+    output_path = "./Task2_Results/" + method_name + ".txt"
+    with open(output_path, 'w') as file:
+        for result in results:
+            file.write(f"{result['id']} {result['x']} {result['y']}\n")
+        file.write(f"\nTotal Time: {total_time} seconds\n")
+    
+    print(f"- {method_name} results written to {output_path}")
+
+def dominates(p1, p2): # Check if p1 dominates p2
     return (p1["x"] <= p2["x"] and p1["y"] <= p2["y"]) and (p1["x"] < p2["x"] or p1["y"] < p2["y"])
 
 # === Sequential Scan Based Method ===
@@ -24,31 +41,22 @@ def sequential_scan(data):
         dominated = False
         for other_point in data:
             if other_point["id"] != point["id"]:
-                if dominates(other_point, point):
+                if dominates(other_point, point): # Check if other_point dominates point
                     dominated = True
                     break
-        if not dominated:
+        if not dominated: # if not, add point to skyline result
             skyline_result.append(point)
 
     end_time = time.time()
     total_time = end_time - start_time
 
-    print(f"- Sequential Scan Total Time: {total_time} seconds")
-
     sorted_results = sorted(skyline_result, key=lambda p: p['id'])
-    skyline_result = sorted_results
-    
-    output_path = './Task2_Results/Seq_Scan.txt'
-    with open(output_path, 'w') as file:
-        for result in skyline_result:
-            file.write(f"{result['id']} {result['x']} {result['y']}\n")
-        file.write(f"\nTotal Time: {total_time} seconds\n")
 
-    print(f"- Results written to {output_path}\n")
-    return skyline_result
+    return sorted_results, total_time
 
 print("\n\tRunning Sequential Scan Based Method...\n")
-sequential_results = sequential_scan(data_points)
+skyline_results, sequential_total_time = sequential_scan(data_points)
+write_results("Sequential_Scan", skyline_results, sequential_total_time)
 
 # === R-Tree ===
 B = 4
@@ -208,49 +216,49 @@ class RTree:
             }
 
 # Build R-Tree
-print("\t*** Building R-Tree ***\n")
+print("\n\t\t*** Building R-Tree ***\n")
 rtree = RTree()
 for point in data_points:
     rtree.insert(rtree.root, point)
 
 print("The MBR of the root is:", rtree.root.MBR)
 
-def mindist_to_origin(mbr): # calculating distance from MBR to origin (0,0)
+def mindist_to_origin(mbr): # calculating distance from origin to MBR's lower-left corner
     return math.sqrt(mbr['x1']**2 + mbr['y1']**2)
 
-def BBS():
-    start_time = time.time()
-    SKY = []  # skyline result
-    H = []    # sorted list of entries (both nodes and points)
+# === Branch and Bound Skyline Algorithm (BBS) ===
+def BBS(rtree):
+    SKY = [] 
+    H = []  
     
     # Step 1: Insert root MBR into H
     root_dist = mindist_to_origin(rtree.root.MBR)
     H.append((rtree.root, root_dist, 'node'))
-    
+
     while H:
         H.sort(key=lambda x: x[1])
-        entry, dist, entry_type = H.pop(0) # Remove first entry from H (sorted by mindist)
-        if entry_type == 'node':
+        entry, distance, entry_type = H.pop(0) 
+        if entry_type == 'node': # check if entry is node 
             node = entry
             
-            dominated = False # Check if any skyline point dominates the lower-left corner of this MBR
+            dominated = False 
             ll_corner = {'x': node.MBR['x1'], 'y': node.MBR['y1']}
             for sky_point in SKY:
-                if dominates(sky_point, ll_corner):
+                if dominates(sky_point, ll_corner): # Check if any skyline point dominates the lower-left corner of this MBR
                     dominated = True
                     break
             
             if not dominated: # if not dominated, insert all the child entries into H
-                if node.is_leaf():
-                    for point in node.data_points: # if the node is leaf, insert all data points
+                if node.is_leaf(): # if the node is leaf, insert all data points along with their distances
+                    for point in node.data_points: 
                         point_dist = math.sqrt(point['x']**2 + point['y']**2)
                         H.append((point, point_dist, 'point'))
                 else: 
-                    for child in node.child_nodes: # if not leaf node, Insert all child nodes
+                    for child in node.child_nodes: # if not leaf node, Insert all child nodes along with their distances
                         child_dist = mindist_to_origin(child.MBR)
                         H.append((child, child_dist, 'node'))
         
-        else:
+        else: # entry is a data point
             point = entry
             
             dominated = False
@@ -262,22 +270,66 @@ def BBS():
             if not dominated: # If not dominated, insert to skyline
                 SKY.append(point)
     
-    end_time = time.time()
-    total_time = end_time - start_time
-    
-    print(f"- BBS Total Time: {total_time} seconds")
-
-    sorted_results = sorted(SKY, key=lambda p: p['id'])
-    SKY = sorted_results
-    
-    output_path = './Task2_Results/BBS.txt'
-    with open(output_path, 'w') as file:
-        for result in SKY:
-            file.write(f"{result['id']} {result['x']} {result['y']}\n")
-        file.write(f"\nTotal Time: {total_time} seconds\n")
-    
-    print(f"- BBS results written to {output_path}")
     return SKY
 
 print("\n\tRunning Branch and Bound Skyline Algorithm (BBS)...\n")
-bbs_results = BBS()
+start_time = time.time()
+bbs_results = BBS(rtree)
+end_time = time.time()
+
+bbs_total_time = end_time - start_time
+sorted_bbs_results = sorted(bbs_results, key=lambda p: p['id'])
+write_results("BBS", sorted_bbs_results, bbs_total_time)
+
+# === BBS with Divide and Conquer ===
+def BBS_DC():
+
+    # Divide data points into left and right subsets based on mean x-coordinate
+    x_values = [point["x"] for point in data_points]
+    mean_x = sum(x_values) / len(x_values)
+
+    left_points = [point for point in data_points if point["x"] <= mean_x]
+    right_points = [point for point in data_points if point["x"] > mean_x]
+
+    # Build R-Trees for both subsets
+
+    print("\n\t*** Building R-Tree for Left Subset ***\n")
+    left_rtree = RTree()
+    for point in left_points:
+        left_rtree.insert(left_rtree.root, point)
+
+    print("The MBR of the left R-Tree root is:", left_rtree.root.MBR)
+
+    print("\n\t*** Building R-Tree for Right Subset ***\n")
+    right_rtree = RTree()
+    for point in right_points:
+        right_rtree.insert(right_rtree.root, point)
+    
+    print("The MBR of the right R-Tree root is:", right_rtree.root.MBR, "\n")
+    
+    start_time = time.time()
+
+    # Get skyline results from both subsets using BBS
+    left_skyline = BBS(left_rtree)
+    right_skyline = BBS(right_rtree)
+
+    final_skyline = left_skyline
+
+    for point in right_skyline:
+        dominated = False
+        for sky_point in final_skyline:
+            if dominates(sky_point, point):
+                dominated = True
+                break
+        if not dominated:
+            final_skyline.append(point)
+    end_time = time.time()
+    total_time = end_time - start_time
+
+    sorted_results = sorted(final_skyline, key=lambda p: p['id'])
+    
+    return sorted_results, total_time
+
+print("\n\tRunning BBS with Divide and Conquer...\n")
+bbs_dc_results, bbs_dc_total_time = BBS_DC()
+write_results("BBS_DC", bbs_dc_results, bbs_dc_total_time)
