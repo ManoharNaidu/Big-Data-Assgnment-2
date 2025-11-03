@@ -10,13 +10,6 @@ import sys
 import time
 import math
 
-# Load data points
-data_points = []
-with open('./Task2_Datasets/city3.txt', 'r') as file:
-    for line in file:
-        id, x, y = line.strip().split(' ')
-        data_points.append({'id': id, 'x': float(x), 'y': float(y)})
-
 def write_results(method_name, results, total_time):
 
     print(f"- {method_name} Total Time: {total_time} seconds")
@@ -54,13 +47,9 @@ def sequential_scan(data):
 
     return sorted_results, total_time
 
-print("\n\tRunning Sequential Scan Based Method...\n")
-skyline_results, sequential_total_time = sequential_scan(data_points)
-write_results("Sequential_Scan", skyline_results, sequential_total_time)
 
-# === R-Tree ===
+# === Node for R-Tree ===
 B = 4
-
 class Node:
     def __init__(self):
         self.id = 0
@@ -89,6 +78,7 @@ class Node:
     def is_leaf(self):
         return len(self.child_nodes) == 0
 
+# === R-Tree Implementation ===
 class RTree:
     def __init__(self):
         self.root = Node()
@@ -215,14 +205,6 @@ class RTree:
                 'y1': min(y_coords), 'y2': max(y_coords)
             }
 
-# Build R-Tree
-print("\n\t\t*** Building R-Tree ***\n")
-rtree = RTree()
-for point in data_points:
-    rtree.insert(rtree.root, point)
-
-print("The MBR of the root is:", rtree.root.MBR)
-
 def mindist_to_origin(mbr): # calculating distance from origin to MBR's lower-left corner
     return math.sqrt(mbr['x1']**2 + mbr['y1']**2)
 
@@ -269,20 +251,11 @@ def BBS(rtree):
 
             if not dominated: # If not dominated, insert to skyline
                 SKY.append(point)
-    
-    return SKY
-
-print("\n\tRunning Branch and Bound Skyline Algorithm (BBS)...\n")
-start_time = time.time()
-bbs_results = BBS(rtree)
-end_time = time.time()
-
-bbs_total_time = end_time - start_time
-sorted_bbs_results = sorted(bbs_results, key=lambda p: p['id'])
-write_results("BBS", sorted_bbs_results, bbs_total_time)
+    sorted_skyline = sorted(SKY, key=lambda p: p['id'])
+    return sorted_skyline
 
 # === BBS with Divide and Conquer ===
-def BBS_DC():
+def BBS_DC(data_points):
 
     # Divide data points into left and right subsets based on mean x-coordinate
     x_values = [point["x"] for point in data_points]
@@ -330,6 +303,43 @@ def BBS_DC():
     
     return sorted_results, total_time
 
-print("\n\tRunning BBS with Divide and Conquer...\n")
-bbs_dc_results, bbs_dc_total_time = BBS_DC()
-write_results("BBS_DC", bbs_dc_results, bbs_dc_total_time)
+def main():
+
+    dataset_path = './Task2_Datasets/city3.txt'
+    output_path = './Task2_Results/'
+
+    # Load data points
+    data_points = []
+    with open(dataset_path, 'r') as file:
+        for line in file:
+            id, x, y = line.strip().split(' ')
+            data_points.append({'id': id, 'x': float(x), 'y': float(y)})
+
+    # 1) Sequential Scan Based Method
+    print("\n\tRunning Sequential Scan Based Method...\n")
+    skyline_results, sequential_total_time = sequential_scan(data_points)
+    write_results("Sequential_Scan", skyline_results, sequential_total_time)
+
+    # 2) Build R-Tree
+    print("\n\t\t*** Building R-Tree ***\n")
+    rtree = RTree()
+    for point in data_points:
+        rtree.insert(rtree.root, point)
+    print("The MBR of the root is:", rtree.root.MBR)
+
+    # 2) Branch and Bound Skyline Algorithm (BBS)
+    print("\n\tRunning Branch and Bound Skyline Algorithm (BBS)...\n")
+    start_time = time.time()
+    skyline_results = BBS(rtree)
+    end_time = time.time()
+    bbs_total_time = end_time - start_time
+    write_results("BBS", skyline_results, bbs_total_time)
+
+    # 3) BBS with Divide and Conquer
+    print("\n\tRunning BBS with Divide and Conquer...\n")
+    bbs_dc_results, bbs_dc_total_time = BBS_DC(data_points)
+    write_results("BBS_DC", bbs_dc_results, bbs_dc_total_time)
+
+
+if __name__ == "__main__":
+    main()
