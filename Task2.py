@@ -49,7 +49,7 @@ def sequential_scan(data):
 
 
 # === Node for R-Tree ===
-B = 4
+B = 5
 class Node:
     def __init__(self):
         self.id = 0
@@ -306,7 +306,6 @@ def BBS_DC(data_points):
 def main():
 
     dataset_path = './Task2_Datasets/city3.txt'
-    output_path = './Task2_Results/'
 
     # Load data points
     data_points = []
